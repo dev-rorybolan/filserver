@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mac Mini File Downloader</title>
+<style>
+    :root {
+      --bg: #0b0f14;
+      --surface: #111827;
+      --muted: #1f2937;
+      --text: #e5e7eb;
+      --subtle: #9ca3af;
+      --accent: #60a5fa;
+      --accent-2: #34d399;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7fafc;
+        --surface: #ffffff;
+        --muted: #f1f5f9;
+        --text: #0f172a;
+        --subtle: #475569;
+        --accent: #2563eb;
+        --accent-2: #059669;
+        --warn: #b45309;
+        --danger: #b91c1c;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, var(--bg), color-mix(in lab, var(--bg) 90%, #000));
+      color: var(--text);
+    }
+
+    /* Layout */
+    .app {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      grid-template-rows: 64px 1fr;
+      grid-template-areas:
+        "sidebar header"
+        "sidebar main";
+      height: 100dvh;
+      max-height: 100dvh;
+    }
+    .sidebar { grid-area: sidebar; background: var(--surface); border-right: 1px solid var(--muted); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .header { grid-area: header; background: var(--surface); border-bottom: 1px solid var(--muted); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; gap: 12px; }
+    .main { grid-area: main; overflow: auto; padding: 24px; }
+
+    /* Sidebar */
+    .brand { display:flex; align-items:center; gap:10px; font-weight: 700; letter-spacing: .2px; }
+    .logo { width: 28px; height: 28px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow); }
+    .nav { margin-top: 12px; display: grid; gap: 6px; }
+    .nav a { display:flex; align-items:center; gap:10px; padding: 10px 12px; border-radius: 12px; color: inherit; text-decoration:none; border:1px solid transparent; }
+    .nav a:hover { background: var(--muted); border-color: color-mix(in lab, var(--muted), var(--text) 10%); }
+    .nav .active { background: color-mix(in lab, var(--muted), var(--text) 8%); border-color: color-mix(in lab, var(--muted), var(--text) 16%); }
+    .spacer { flex:1; }
+    .foot { font-size: 12px; color: var(--subtle); }
+
+    /* Header */
+    .search {
+      flex: 1; display:flex; align-items:center; gap:10px; background: var(--muted); border:1px solid color-mix(in lab, var(--muted), var(--text) 8%);
+      border-radius: 999px; padding: 8px 12px; min-width: 200px;
+    }
+    .search input { border: none; outline: none; background: transparent; color: var(--text); width: 100%; }
+    .top-actions { display:flex; align-items:center; gap: 10px; }
+    .btn { appearance: none; border: 1px solid color-mix(in lab, var(--muted), var(--text) 12%); background: var(--surface); color: var(--text); padding: 8px 12px; border-radius: 12px; cursor: pointer; box-shadow: 0 2px 0 rgba(0,0,0,.05); }
+    .btn:hover { background: color-mix(in lab, var(--surface), var(--text) 6%); }
+    .btn.accent { background: linear-gradient(180deg, color-mix(in lab, var(--accent), #fff 10%), var(--accent)); color: #fff; border-color: transparent; }
+
+    /* Main content */
+    .grid { display:grid; gap: 16px; }
+    .cards { grid-template-columns: repeat(4, minmax(200px, 1fr)); }
+    .two-col { grid-template-columns: 1.2fr .8fr; }
+    .panel { background: var(--surface); border: 1px solid var(--muted); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+    .panel h3 { margin: 0 0 10px; font-size: 14px; letter-spacing:.3px; color: var(--subtle); text-transform: uppercase; }
+
+    .stat { display:flex; align-items:center; justify-content:space-between; }
+    .stat .big { font-size: 32px; font-weight: 700; }
+    .stat .chip { font-size: 12px; padding: 4px 8px; border-radius: 999px; background: color-mix(in lab, var(--accent), #000 10%); color: #fff; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--muted); text-align: left; }
+    th { color: var(--subtle); font-weight: 600; font-size: 13px; }
+    tr:hover td { background: color-mix(in lab, var(--surface), var(--text) 3%); }
+
+    .controls { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
+    .control { display:flex; align-items:center; justify-content:space-between; gap: 12px; background: var(--muted); padding: 12px; border-radius: 12px; border:1px solid color-mix(in lab, var(--muted), var(--text) 10%); }
+
+    /* Switch (pure CSS) */
+    .switch { position: relative; width: 46px; height: 28px; }
+    .switch input { display:none; }
+    .slider { position:absolute; inset:0; background: #364152; border-radius:999px; transition:.2s; border:1px solid color-mix(in lab, #364152, var(--text) 10%); }
+    .slider::after { content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; background:#fff; border-radius:50%; transition:.2s; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+    input:checked + .slider { background: var(--accent-2); }
+    input:checked + .slider::after { transform: translateX(18px); }
+
+    /* Badges / status */
+    .badge { display:inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; border:1px solid color-mix(in lab, var(--muted), var(--text) 12%); background: var(--muted); }
+    .ok { color:#065f46; background: color-mix(in lab, var(--accent-2), #000 85%); border-color: color-mix(in lab, var(--accent-2), #000 60%); }
+    .warn { color:#7c2d12; background: color-mix(in lab, var(--warn), #000 85%); border-color: color-mix(in lab, var(--warn), #000 60%); }
+    .danger { color:#7f1d1d; background: color-mix(in lab, var(--danger), #000 85%); border-color: color-mix(in lab, var(--danger), #000 60%); }
+
+    /* Forms */
+    .field { display:grid; gap:6px; }
+    .label { font-size: 13px; color: var(--subtle); }
+    .input, select, textarea {
+      width: 100%; padding: 10px 12px; border-radius: 12px; border:1px solid color-mix(in lab, var(--muted), var(--text) 12%);
+      background: var(--surface); color: var(--text);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .app { grid-template-columns: 86px 1fr; }
+      .sidebar .brand span, .sidebar .nav span { display:none; }
+      .cards { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+      .two-col { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .cards { grid-template-columns: 1fr; }
+      .controls { grid-template-columns: 1fr; }
+      .header { flex-wrap: wrap; padding: 8px; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <span>MiniFiles</span>
+    </div>
+    <div class="nav">
+      <a class="active" href="#">Home</a>
+      <a href="#">Settings</a>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot">© Rory 2025</div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="search">
+      <input type="text" placeholder="Search files..." id="searchBox">
+    </div>
+    <div class="top-actions">
+      <button class="btn accent" onclick="refreshFiles()">Refresh</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="panel">
+      <h3>Available Files</h3>
+      <table id="fileTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Download</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Files will be injected here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const apiUrl = 'http://YOUR_MAC_MINI_IP:5000/files'; // Replace with your Flask server URL
+
+async function fetchFiles() {
+  try {
+    const response = await fetch(apiUrl);
+    const files = await response.json(); // Expected: [{name: 'file.txt', size: '2 MB'}, ...]
+    const tbody = document.querySelector('#fileTable tbody');
+    tbody.innerHTML = '';
+    files.forEach(file => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${file.name}</td>
+        <td>${file.size}</td>
+        <td><a class="btn" href="/download/${encodeURIComponent(file.name)}">Download</a></td>
+      `;
+      tbody.appendChild(row);
+    });
+  } catch (err) {
+    console.error('Error fetching files:', err);
+  }
+}
+
+function refreshFiles() {
+  fetchFiles();
+}
+
+// Filter files as user types
+document.getElementById('searchBox').addEventListener('input', (e) => {
+  const filter = e.target.value.toLowerCase();
+  document.querySelectorAll('#fileTable tbody tr').forEach(row => {
+    const name = row.cells[0].textContent.toLowerCase();
+    row.style.display = name.includes(filter) ? '' : 'none';
+  });
+});
+
+// Initial load
+fetchFiles();
+</script>
+</body>
+</html>
