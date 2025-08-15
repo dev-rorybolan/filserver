@@ -5,7 +5,7 @@ from moviepy.editor import VideoFileClip
 app = Flask(__name__)
 def download(data):
     path = None
-    if not data["name"]:
+    if not data.get("name"):
         return {"status": "no name"}, 400
     name = data["name"]
     if not os.path.exists(f"/Users/rorybolan/Desktop/Download_files/{name}"):
