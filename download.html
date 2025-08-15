@@ -183,18 +183,21 @@ const apiUrl = 'http://[CENSORED]:5000/files';
 async function fetchFiles() {
   try {
     const response = await fetch(apiUrl);
-    const files = await response.json(); // Expected: [{name: 'file.txt', size: '2 MB'}, ...]
+    const data = await response.json(); // { names: [...], lengths: [...] }
+
     const tbody = document.querySelector('#fileTable tbody');
     tbody.innerHTML = '';
-    files.forEach(file => {
+
+    for (let i = 0; i < data.names.length; i++) {
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td>${file.name}</td>
-        <td>${file.size}</td>
-        <td><a class="btn" href="/download/${encodeURIComponent(file.name)}">Download</a></td>
+        <td>${data.names[i]}</td>
+        <td>${data.lengths[i]}</td>
+        <td><a class="btn" href="/download/${encodeURIComponent(data.names[i])}">Download</a></td>
       `;
       tbody.appendChild(row);
-    });
+    }
+
   } catch (err) {
     console.error('Error fetching files:', err);
   }
@@ -215,6 +218,7 @@ document.getElementById('searchBox').addEventListener('input', (e) => {
 
 // Initial load
 fetchFiles();
+
 </script>
 </body>
 </html>
