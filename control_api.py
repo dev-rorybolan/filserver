@@ -36,6 +36,7 @@ def return_files() -> dict:
 def run_command():
     data = request.get_json(silent=True) or {}
     path = data.get("path")
+    if not data.get("command"): return
     if not path:
         return {"status": "failed"}, 400
     match data["command"]:
