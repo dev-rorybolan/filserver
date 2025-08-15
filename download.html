@@ -178,45 +178,69 @@
 </div>
 
 <script>
-const apiUrl = 'http://[CENSORED]:5000/files'; 
+const apiUrl = 'http://YOUR_MAC_MINI_IP:5000/command'; // change to your Mac Mini IP
+
+let files = []; // will hold {name} objects
 
 async function fetchFiles() {
   try {
-    const response = await fetch(apiUrl);
-    const data = await response.json(); // { names: [...], lengths: [...] }
-
-    const tbody = document.querySelector('#fileTable tbody');
-    tbody.innerHTML = '';
-
-    for (let i = 0; i < data.names.length; i++) {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${data.names[i]}</td>
-        <td>${data.lengths[i]}</td>
-        <td><a class="btn" href="/download/${encodeURIComponent(data.names[i])}">Download</a></td>
-      `;
-      tbody.appendChild(row);
-    }
-
+    const resp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({command: 20, path: "/"}) // path can be anything if your API needs it
+    });
+    if (!resp.ok) throw new Error('Failed to fetch files');
+    const data = await resp.json();
+    files = data.names.map(name => ({name})); // just store name
+    displayFiles(files);
   } catch (err) {
-    console.error('Error fetching files:', err);
+    alert(err);
   }
 }
 
-function refreshFiles() {
-  fetchFiles();
+function displayFiles(list) {
+  const listEl = document.getElementById('fileList');
+  listEl.innerHTML = '';
+  list.forEach(file => {
+    const card = document.createElement('div');
+    card.className = 'panel';
+    card.innerHTML = `
+      <div class="stat">
+        <span>${file.name}</span>
+        <button class="btn accent" onclick="downloadFile('${file.name}')">Download</button>
+      </div>
+    `;
+    listEl.appendChild(card);
+  });
 }
 
-// Filter files as user types
-document.getElementById('searchBox').addEventListener('input', (e) => {
-  const filter = e.target.value.toLowerCase();
-  document.querySelectorAll('#fileTable tbody tr').forEach(row => {
-    const name = row.cells[0].textContent.toLowerCase();
-    row.style.display = name.includes(filter) ? '' : 'none';
-  });
-});
+function filterFiles() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = files.filter(f => f.name.toLowerCase().includes(query));
+  displayFiles(filtered);
+}
 
-// Initial load
+async function downloadFile(filename) {
+  try {
+    const resp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({command: 10, name: filename})
+    });
+    if (!resp.ok) throw new Error('Download failed');
+    const blob = await resp.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(err);
+  }
+}
+
+// initialize
 fetchFiles();
 
 </script>
